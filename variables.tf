@@ -59,7 +59,6 @@ variable cluster_endpoint_private_access {
 variable node_group_scaling_settings {
   description = "EKS Node Groups Scaling Capacities"
   type        = map
-  default     = {}
 }
 
 variable node_group_shape {

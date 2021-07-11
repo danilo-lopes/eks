@@ -46,6 +46,28 @@ corespondente. Não foi criado a funcionalidade de criação automatica com o te
 
 * [IAM](https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/docs/iam-permissions.md)
 
+## Inputs
+
+| Nome | Descrição | Tipo | Default | Requerido |
+|------|-----------|------|---------|-----------|
+| aws_region| Região da AWS | string | null | Sim |
+| tags | Tags adicionais | map(string) | {} | Não |
+| vpc_id | ID da VPC que o EKS sera provisionado | string | null | Sim |
+| private_subnets_id | IDs das subnets privadas que os worker nodes seram provisionados | list(string) | null | Sim |
+| cluster_name | Nome dado ao cluster | string | null | Sim |
+| cluster_version | Versão do EKS | string | null | Sim |
+| enable_cluster_logs | Possibilita habilitar os logs de recursos especificos do cluster. Os logs são armazenados no cloudwatch log group| list(string) | null | Não |
+| cluster_log_retention_in_days | Os dias de retenção dos logs do cluster no cloudwatch log group | number | 90 | Não |
+| cluster_endpoint_public_access | Possibilitar o acesso via internet a API do EKS | bool | true | Não |
+| cluster_endpoint_private_access | Possibilitar o acesso interno (Rede da AWS) a API do EKS | bool | true | Não |
+| node_group_scaling_settings | Configurações de quantidade de worker nodes. Minimo, maximo e desejo atual. | map | null | Sim |
+| node_group_shape | Tamanho dos worker nodes | string | null | Sim |
+| aws_profile_name | Profile AWS que provisionara o ambiente | msp(string) | null | Sim |
+| node_group_ssh_key_name | Chave SSH que administrará os worker nodes | string | null | Não |
+| deploy_alb_controller | Escolher entre provisionar ou não o ALB Ingress Controller | bool | False | Não |
+| map_users | Usuario do IAM que poderam administrar o cluster | list(object({})) | [] | Não |
+| map_roles | Role do IAM que podera administrar o cluster | list(object({})) | [] | Não |
+
 ## Outputs
 
 | Nome | Descrição |
