@@ -11,6 +11,14 @@ module "eks" {
   cluster_name                    = "foo"
   cluster_version                 = "1.20"
 
+  enable_cluster_logs             = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ]
+
   node_group_scaling_settings     = {
     desired_size                  = 1
     max_size                      = 5

@@ -1,4 +1,5 @@
 resource "aws_cloudwatch_log_group" "this" {
+  count             = length(var.enable_cluster_logs) > 1 ? 1 : 0
   name              = "/aws/eks/${var.cluster_name}/cluster"
   retention_in_days = var.cluster_log_retention_in_days
   tags              = merge(
@@ -7,6 +8,67 @@ resource "aws_cloudwatch_log_group" "this" {
       "Name": "${var.cluster_name}-cloudwatch-log-group"
     },
   )
+}
+
+resource "aws_eks_cluster" "cluster" {
+  name                      = var.cluster_name
+  version                   = var.cluster_version
+  role_arn                  = aws_iam_role.cluster.arn
+  enabled_cluster_log_types = var.enable_cluster_logs == null ? [] : var.enable_cluster_logs
+
+  vpc_config {
+    security_group_ids      = [
+      aws_security_group.cluster.id,
+      aws_security_group.node_group.id
+    ]
+    subnet_ids              = var.private_subnets_id
+    endpoint_private_access = var.cluster_endpoint_private_access
+    endpoint_public_access  = var.cluster_endpoint_public_access
+  }
+
+  tags                      = merge(
+    var.tags,
+    {
+      "Name": var.cluster_name
+    },
+  )
+}
+
+resource "aws_security_group" "cluster" {
+  name        = "${var.cluster_name}-cluster-security-group"
+  description = "${var.cluster_name} eks security group"
+  
+  vpc_id = var.vpc_id
+
+  tags = merge(
+    var.tags,
+    { 
+      "Name": "${var.cluster_name} cluster security group"
+    },
+    { 
+      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
+    },
+  )
+}
+
+resource "aws_security_group_rule" "cluster_egress_internet" {
+  description       = "Allow cluster egress access to the Internet."
+  protocol          = "-1"
+  security_group_id = aws_security_group.cluster.id
+  cidr_blocks       = ["0.0.0.0/0"]
+  from_port         = 0
+  to_port           = 0
+  type              = "egress"
+}
+
+resource "aws_security_group_rule" "cluster_https_worker_ingress" {
+  description              = "Allow pods to communicate with the EKS cluster API."
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.cluster.id
+  source_security_group_id = aws_security_group.node_group.id
+  from_port                = 443
+  to_port                  = 443
+  type                     = "ingress"
 }
 
 resource "aws_iam_role" "cluster" {
@@ -44,74 +106,6 @@ resource "aws_iam_role_policy_attachment" "AmazonEKSClusterPolicy" {
 resource "aws_iam_role_policy_attachment" "AmazonEKSServicePolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy" # Amazon owner
   role       = aws_iam_role.cluster.name
-}
-
-resource "aws_security_group" "cluster" {
-  name        = "${var.cluster_name}-cluster-security-group"
-  description = "${var.cluster_name} eks security group"
-  
-  vpc_id = var.vpc_id
-
-  tags = merge(
-    var.tags,
-    { 
-      "Name": "${var.cluster_name} cluster security group"
-    },
-    { 
-      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
-    },
-  )
-
-  # I decide to do this rule because if another aws resource needs to administrate the cluster, ex any bastion machine, just attach this security group to itself.
-  ingress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "all"
-    self      = true
-  }
-
-  egress {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group_rule" "this" {
-  # https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html
-  description              = "Allow pods to communicate with the cluster API Server"
-  type                     = "ingress"
-
-  from_port                = 443
-  to_port                  = 443
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.cluster.id
-  source_security_group_id = aws_security_group.node_group.id
-}
-
-resource "aws_eks_cluster" "cluster" {
-  name                      = var.cluster_name
-  version                   = var.cluster_version
-  role_arn                  = aws_iam_role.cluster.arn
-  enabled_cluster_log_types = var.enable_cluster_logs == null ? [] : var.enable_cluster_logs
-
-  vpc_config {
-    security_group_ids      = [
-      aws_security_group.cluster.id,
-      aws_security_group.node_group.id
-    ]
-    subnet_ids              = var.private_subnets_id
-    endpoint_private_access = var.cluster_endpoint_private_access
-    endpoint_public_access  = var.cluster_endpoint_public_access
-  }
-
-  tags                      = merge(
-    var.tags,
-    {
-      "Name": var.cluster_name
-    },
-  )
 }
 
 locals {
